@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-智能图片使用场景分析器
+图片使用场景分析器
 通过分析图片分辨率和比例，识别适用场景：PC、平板、手机、头像等
 """
 
@@ -16,38 +16,38 @@ from typing import Dict, List
 class ImageSceneAnalyzer:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("智能图片场景分析器")
+        self.root.title("图片使用场景分析器")
         self.root.geometry("800x700")
         self.root.configure(bg="#f0f0f0")
 
         # 场景标准比例定义（宽:高）
         self.scene_ratios = {
             "头像": [(1, 1)],  # 正方形
-            "手机": [(9, 16), (9, 18), (9, 19.5), (10, 16), (2, 3)],  # 竖屏比例
+            "手机": [(9, 16), (9, 18), (9, 19.5), (10, 16), (2, 3)],  # 手机比例
             "平板": [(4, 3), (16, 10), (3, 2), (5, 4)],  # 平板比例
-            "PC": [(16, 9), (21, 9), (16, 10), (4, 3), (5, 4), (3, 2)],  # PC显示器比例
+            "PC": [(16, 9), (21, 9), (16, 10), (4, 3), (5, 4), (3, 2)],  # PC比例
         }
 
-        # 容差范围（百分比）
-        self.tolerance = 0.05  # 5%的容差
+        # 容差范围
+        self.tolerance = 0.05
 
-        self.current_image_path = None
-        self.current_image = None
+        # self.current_image_path = None
+        # self.current_image = None
         self.analysis_results = {}
 
         self.setup_ui()
 
     def setup_ui(self):
         """设置用户界面"""
-        # 主标题
-        title_label = tk.Label(
-            self.root,
-            text="智能图片场景分析器",
-            font=("Arial", 16, "bold"),
-            bg="#f0f0f0",
-            fg="#333333",
-        )
-        title_label.pack(pady=10)
+        # # 主标题
+        # title_label = tk.Label(
+        #     self.root,
+        #     text="图片场景分析器",
+        #     font=("Arial", 16, "bold"),
+        #     bg="#f0f0f0",
+        #     fg="#333333",
+        # )
+        # title_label.pack(pady=10)
 
         # 上传按钮区域
         upload_frame = tk.Frame(self.root, bg="#f0f0f0")
@@ -55,7 +55,7 @@ class ImageSceneAnalyzer:
 
         upload_btn = tk.Button(
             upload_frame,
-            text="选择图片文件",
+            text="选择文件",
             font=("Arial", 12),
             bg="#4CAF50",
             fg="white",
@@ -89,7 +89,7 @@ class ImageSceneAnalyzer:
 
         self.image_label = tk.Label(
             self.preview_frame,
-            text="请选择图片文件",
+            text="请选择文件",
             font=("Arial", 12),
             bg="white",
             fg="#666666",
@@ -119,19 +119,15 @@ class ImageSceneAnalyzer:
         )
         self.results_text.pack(pady=10, padx=10, fill="x")
 
-        # # 绑定键盘快捷键
-        # self.root.bind("<Control-o>", lambda e: self.select_image())
-        # self.root.bind("<Command-o>", lambda e: self.select_image())  # Mac快捷键
-
     def select_image(self):
         """选择图片文件"""
         file_types = [
             ("图片文件", "*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.webp"),
-            ("所有文件", "*.*"),
+            # ("所有文件", "*.*"),
         ]
 
         file_path = filedialog.askopenfilename(
-            title="选择图片文件", filetypes=file_types
+            title="选择文件", filetypes=file_types
         )
 
         if file_path:
@@ -139,7 +135,7 @@ class ImageSceneAnalyzer:
 
     def batch_analyze(self):
         """批量分析图片"""
-        folder_path = filedialog.askdirectory(title="选择包含图片的文件夹")
+        folder_path = filedialog.askdirectory(title="选择文件夹")
         if not folder_path:
             return
 
@@ -153,7 +149,7 @@ class ImageSceneAnalyzer:
                 image_files.append(os.path.join(folder_path, filename))
 
         if not image_files:
-            messagebox.showwarning("提示", "所选文件夹中没有找到图片文件！")
+            messagebox.showwarning("提示", "所选文件夹中没有找到图片！")
             return
 
         # 批量分析
@@ -173,7 +169,7 @@ class ImageSceneAnalyzer:
     def show_batch_results(self, results: List[str]):
         """显示批量分析结果"""
         result_window = tk.Toplevel(self.root)
-        result_window.title("批量分析结果")
+        result_window.title("分析结果")
         result_window.geometry("600x400")
         result_window.configure(bg="#f0f0f0")
 
@@ -196,32 +192,6 @@ class ImageSceneAnalyzer:
 
         text_widget.config(state=tk.DISABLED)
 
-        # # 保存按钮
-        # save_btn = tk.Button(
-        #     result_window,
-        #     text="保存结果",
-        #     command=lambda: self.save_batch_results(results),
-        # )
-        # save_btn.pack(pady=10)
-
-    # def save_batch_results(self, results: List[str]):
-    #     """保存批量分析结果"""
-    #     file_path = filedialog.asksaveasfilename(
-    #         defaultextension=".txt",
-    #         filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
-    #     )
-
-    #     if file_path:
-    #         try:
-    #             with open(file_path, "w", encoding="utf-8") as f:
-    #                 f.write("智能图片场景分析结果\n")
-    #                 f.write("=" * 30 + "\n\n")
-    #                 for result in results:
-    #                     f.write(result + "\n")
-    #             messagebox.showinfo("成功", f"结果已保存到: {file_path}")
-    #         except Exception as e:
-    #             messagebox.showerror("错误", f"保存失败: {str(e)}")
-
     def load_and_analyze_image(self, image_path: str):
         """加载并分析图片"""
         try:
@@ -234,10 +204,10 @@ class ImageSceneAnalyzer:
             # 显示分析结果
             self.display_results()
 
-            self.current_image_path = image_path
+            # self.current_image_path = image_path
 
         except Exception as e:
-            messagebox.showerror("错误", f"处理图片时发生错误: {str(e)}")
+            messagebox.showerror("错误", f"处理时发生错误: {str(e)}")
 
     def analyze_image(self, image_path: str) -> Dict:
         """分析图片场景适用性"""
@@ -245,7 +215,7 @@ class ImageSceneAnalyzer:
             with Image.open(image_path) as img:
                 width, height = img.size
         except Exception as e:
-            raise Exception(f"无法打开图片文件: {str(e)}")
+            raise Exception(f"无法打开文件: {str(e)}")
 
         # 计算图片比例
         image_ratio = width / height
@@ -254,13 +224,14 @@ class ImageSceneAnalyzer:
         scene_analysis = {}
         suitable_scenes = []
 
-        for scene_name, ratios in self.scene_ratios.items():
+        for scene_name, ratios in self.scene_ratios.items(): # 枚举所有标准比例
             is_suitable = False
             best_match_ratio = None
             min_difference = float("inf")
 
             for standard_w, standard_h in ratios:
                 standard_ratio = standard_w / standard_h
+                # 差异度：实际比例 - 标准比例 / 标准比例
                 difference = abs(image_ratio - standard_ratio) / standard_ratio
 
                 if difference < min_difference:
@@ -351,7 +322,7 @@ class ImageSceneAnalyzer:
         self.results_text.delete(1.0, tk.END)
 
         # 基本信息
-        basic_info = f"""图片基本信息
+        basic_info = f"""基本信息
 分辨率: {results['width']} × {results['height']}
 宽高比例: {results['ratio']:.3f}:1
 推荐场景: {results['best_scene']}
@@ -360,7 +331,7 @@ class ImageSceneAnalyzer:
         self.results_text.insert(tk.END, basic_info)
 
         # 各场景适用性分析
-        self.results_text.insert(tk.END, "🎯 各场景适用性分析\n")
+        self.results_text.insert(tk.END, " 各场景适用性分析\n")
         self.results_text.insert(tk.END, "-" * 40 + "\n")
 
         for scene_name, analysis in results["scene_analysis"].items():
