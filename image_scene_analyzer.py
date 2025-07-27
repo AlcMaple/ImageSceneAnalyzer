@@ -18,9 +18,19 @@ class ImageSceneAnalyzer:
         self.root = tk.Tk()
         self.root.title("图片使用场景分析器")
         self.root.geometry("800x700")
-        self.root.configure(bg="#f0f0f0")
+        self.root.configure(bg="#fafafa")
+        ttk.Style().theme_use("clam")
+        self.colors = {
+            "bg": "#fafafa",
+            "card": "#ffffff",
+            "accent": "#4f46e5",  # 主色
+            "accent2": "#10b981",  # 辅色
+            "text": "#111827",
+            "text2": "#6b7280",
+            "red": "#ef4444",
+        }
 
-        # 场景标准比例定义（宽:高）
+        # 场景标准比例
         self.scene_ratios = {
             "头像": [(1, 1)],  # 正方形
             "手机": [(9, 16), (9, 18), (9, 19.5), (10, 16), (2, 3)],  # 手机比例
@@ -31,104 +41,139 @@ class ImageSceneAnalyzer:
         # 容差范围
         self.tolerance = 0.05
 
-        # self.current_image_path = None
-        # self.current_image = None
         self.analysis_results = {}
+        self.current_image_path = None
 
         self.setup_ui()
 
     def setup_ui(self):
-        """设置用户界面"""
-        # # 主标题
-        # title_label = tk.Label(
-        #     self.root,
-        #     text="图片场景分析器",
-        #     font=("Arial", 16, "bold"),
-        #     bg="#f0f0f0",
-        #     fg="#333333",
-        # )
-        # title_label.pack(pady=10)
+        # ---------- 配色 ----------
+        self.colors = {
+            "bg": "#fafafa",
+            "canvas": "#f3f4f6",  # 左侧预览区背景
+            "text": "#374151",
+            "card": ["#e0e7ff", "#e0f2fe", "#fce7f3", "#fef3c7"],
+        }
 
-        # 上传按钮区域
-        upload_frame = tk.Frame(self.root, bg="#f0f0f0")
-        upload_frame.pack(pady=10)
-
-        upload_btn = tk.Button(
-            upload_frame,
-            text="选择文件",
-            font=("Arial", 12),
-            bg="#4CAF50",
-            fg="white",
-            padx=20,
-            pady=10,
-            command=self.select_image,
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Main.TFrame", background=self.colors["bg"])
+        style.configure(
+            "Accent.TButton",
+            background="#6366f1",
+            foreground="white",
+            borderwidth=0,
+            focuscolor="none",
+            font=("Segoe UI", 11, "bold"),
         )
-        upload_btn.pack(side=tk.LEFT, padx=5)
+        style.map("Accent.TButton", background=[("active", "#4f46e5")])
 
-        batch_btn = tk.Button(
-            upload_frame,
-            text="批量分析",
-            font=("Arial", 12),
-            bg="#2196F3",
-            fg="white",
-            padx=20,
-            pady=10,
-            command=self.batch_analyze,
-        )
-        batch_btn.pack(side=tk.LEFT, padx=5)
+        # ---------- 布局 ----------
+        main = ttk.Frame(self.root, style="Main.TFrame")
+        main.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # 图片预览区域
-        self.preview_frame = tk.LabelFrame(
-            self.root,
-            text="图片预览",
-            font=("Arial", 10, "bold"),
-            bg="#f0f0f0",
-            fg="#333333",
-        )
-        self.preview_frame.pack(pady=10, padx=20, fill="both", expand=True)
+        # 顶部按钮
+        top = ttk.Frame(main, style="Main.TFrame")
+        top.pack(fill="x", pady=(0, 15))
+        ttk.Button(
+            top, text=" 选择图片", style="Accent.TButton", command=self.select_image
+        ).pack(side="left", padx=(0, 10))
+        ttk.Button(
+            top, text=" 批量分析", style="Accent.TButton", command=self.batch_analyze
+        ).pack(side="left")
 
-        self.image_label = tk.Label(
-            self.preview_frame,
-            text="请选择文件",
-            font=("Arial", 12),
-            bg="white",
-            fg="#666666",
-            width=60,
-            height=10,
-        )
-        self.image_label.pack(pady=10, padx=10, fill="both", expand=True)
+        # ---------- 内容区 ----------
+        body = ttk.Frame(main, style="Main.TFrame")
+        body.pack(fill="both", expand=True)
 
-        # 分析结果区域
-        self.results_frame = tk.LabelFrame(
-            self.root,
-            text="分析结果",
-            font=("Arial", 10, "bold"),
-            bg="#f0f0f0",
-            fg="#333333",
-        )
-        self.results_frame.pack(pady=10, padx=20, fill="x")
+        # 左侧
+        self.canvas = tk.Canvas(body, bg=self.colors["canvas"], highlightthickness=0)
+        self.canvas.pack(side="left", fill="both", expand=True, padx=(0, 15))
+        self.canvas.bind("<Configure>", self._redraw_canvas)
+        self.canvas.bind(
+            "<Button-1>", lambda e: self.select_image()
+        )  # 容器绑定选择图片功能
 
-        # 创建结果显示区域
-        self.results_text = tk.Text(
-            self.results_frame,
-            height=8,
-            font=("Arial", 10),
-            bg="white",
-            fg="#333333",
-            wrap=tk.WORD,
+        # 右侧
+        self.result_card = tk.Frame(body, bg=self.colors["bg"])
+        self.result_card.pack(side="left", fill="both", expand=True)
+
+        # 标题
+        tk.Label(
+            self.result_card,
+            text=" 分析结果",
+            font=("Segoe UI", 15, "bold"),
+            bg=self.colors["bg"],
+            fg=self.colors["text"],
+        ).pack(anchor="w")
+
+    def _redraw_canvas(self, event=None):
+        self.canvas.delete("all")
+        cvs_w, cvs_h = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if cvs_w <= 1 or cvs_h <= 1:
+            return
+
+        # 加载提示
+        self.canvas.create_text(
+            cvs_w // 2,
+            cvs_h // 2,
+            text="加载中…",
+            fill="#4f46e5",
+            font=("Segoe UI", 14, "bold"),
         )
-        self.results_text.pack(pady=10, padx=10, fill="x")
+        self.canvas.update_idletasks()  # 刷新
+
+        if not self.current_image_path:  # 空状态
+            # 渐变背景
+            for i in range(0, cvs_h, 2):
+                color = self._interpolate_color("#e0e7ff", "#f3f4f6", i / cvs_h)
+                self.canvas.create_line(0, i, cvs_w, i, fill=color, width=2)
+
+            # 居中插画
+            cx, cy = cvs_w // 2, cvs_h // 2
+            r = min(cvs_w, cvs_h) // 8
+            self.canvas.create_oval(
+                cx - r, cy - r, cx + r, cy + r, outline="#a5b4fc", width=3
+            )
+            self.canvas.create_line(
+                cx - r // 2, cy, cx + r // 2, cy, fill="#a5b4fc", width=3
+            )
+            self.canvas.create_line(
+                cx, cy - r // 2, cx, cy + r // 2, fill="#a5b4fc", width=3
+            )
+            self.canvas.create_text(
+                cx,
+                cy + r + 30,
+                text="点击上传图片",
+                fill="#6b7280",
+                font=("Segoe UI", 12),
+            )
+            return
+
+        # 图片绘制
+        img = Image.open(self.current_image_path)
+        img_w, img_h = img.size
+        scale = max(cvs_w / img_w, cvs_h / img_h)
+        new_w, new_h = int(img_w * scale), int(img_h * scale)
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        self.tk_img = ImageTk.PhotoImage(img)
+        x, y = (cvs_w - new_w) // 2, (cvs_h - new_h) // 2
+        self.canvas.create_image(x, y, anchor="nw", image=self.tk_img)
+
+    def _interpolate_color(self, c1, c2, t):
+        """线性插值十六进制颜色"""
+        c1 = tuple(int(c1[i : i + 2], 16) for i in (1, 3, 5))
+        c2 = tuple(int(c2[i : i + 2], 16) for i in (1, 3, 5))
+        r = tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+        return f"#{r[0]:02x}{r[1]:02x}{r[2]:02x}"
 
     def select_image(self):
         """选择图片文件"""
         file_types = [
             ("图片文件", "*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.webp"),
-            # ("所有文件", "*.*"),
         ]
 
-        file_path = filedialog.askopenfilename(
-            title="选择文件", filetypes=file_types
-        )
+        file_path = filedialog.askopenfilename(title="选择文件", filetypes=file_types)
 
         if file_path:
             self.load_and_analyze_image(file_path)
@@ -204,8 +249,6 @@ class ImageSceneAnalyzer:
             # 显示分析结果
             self.display_results()
 
-            # self.current_image_path = image_path
-
         except Exception as e:
             messagebox.showerror("错误", f"处理时发生错误: {str(e)}")
 
@@ -217,21 +260,21 @@ class ImageSceneAnalyzer:
         except Exception as e:
             raise Exception(f"无法打开文件: {str(e)}")
 
-        # 计算图片比例
+        # 图片比例
         image_ratio = width / height
 
         # 分析各个场景的适用性
         scene_analysis = {}
         suitable_scenes = []
 
-        for scene_name, ratios in self.scene_ratios.items(): # 枚举所有标准比例
+        for scene_name, ratios in self.scene_ratios.items():  # 枚举所有标准比例
             is_suitable = False
             best_match_ratio = None
             min_difference = float("inf")
 
             for standard_w, standard_h in ratios:
                 standard_ratio = standard_w / standard_h
-                # 差异度：实际比例 - 标准比例 / 标准比例
+                # 差异度：图片比例 - 标准比例 / 标准比例
                 difference = abs(image_ratio - standard_ratio) / standard_ratio
 
                 if difference < min_difference:
@@ -240,7 +283,7 @@ class ImageSceneAnalyzer:
 
                 # 检查是否在容差范围内
                 if difference <= self.tolerance:
-                    is_suitable = True
+                    is_suitable = True  # 该场景适用
 
             scene_analysis[scene_name] = {
                 "suitable": is_suitable,
@@ -268,6 +311,7 @@ class ImageSceneAnalyzer:
             "scene_analysis": scene_analysis,
             "suitable_scenes": suitable_scenes,
             "best_scene": best_scene,
+            "path": image_path,
         }
 
     def get_distortion_level(self, difference: float) -> str:
@@ -284,92 +328,58 @@ class ImageSceneAnalyzer:
             return "严重变形"
 
     def update_image_preview(self, image_path: str):
-        """更新图片预览"""
+        """Canvas 重绘图片"""
         try:
-            # 打开并调整图片大小用于预览
-            with Image.open(image_path) as img:
-                # 计算预览尺寸（保持比例）
-                preview_width = 400
-                preview_height = 200
-
-                img_ratio = img.width / img.height
-                if img_ratio > preview_width / preview_height:
-                    new_width = preview_width
-                    new_height = int(preview_width / img_ratio)
-                else:
-                    new_height = preview_height
-                    new_width = int(preview_height * img_ratio)
-
-                img_resized = img.resize(
-                    (new_width, new_height), Image.Resampling.LANCZOS
-                )
-                photo = ImageTk.PhotoImage(img_resized)
-
-                self.image_label.configure(image=photo, text="")
-                self.image_label.image = photo  # 保持引用
-
+            with Image.open(image_path):
+                pass
         except Exception as e:
-            self.image_label.configure(image="", text=f"预览失败: {str(e)}", fg="red")
+            # 清空画布，显示错误提示
+            self.canvas.delete("all")
+            self.canvas.create_text(
+                self.canvas.winfo_width() // 2,
+                self.canvas.winfo_height() // 2,
+                text=f"预览失败: {str(e)}",
+                fill="#ef4444",
+                font=("Segoe UI", 12),
+            )
+            return
+
+        # 记录路径，进行重绘
+        self.current_image_path = image_path
+        self._redraw_canvas()
 
     def display_results(self):
-        """显示分析结果"""
         if not self.analysis_results:
             return
 
-        results = self.analysis_results
+        self.current_image_path = self.analysis_results.get("path")  # 记录路径
+        self._redraw_canvas()
 
-        # 清空之前的结果
-        self.results_text.delete(1.0, tk.END)
+        # 清空旧卡片
+        for w in self.result_card.winfo_children()[1:]:
+            w.destroy()
 
-        # 基本信息
-        basic_info = f"""基本信息
-分辨率: {results['width']} × {results['height']}
-宽高比例: {results['ratio']:.3f}:1
-推荐场景: {results['best_scene']}
+        res = self.analysis_results
+        scenes = list(res["scene_analysis"].items())
+        for idx, (scene, info) in enumerate(scenes):
+            bg = self.colors["card"][idx % len(self.colors["card"])]
+            card = tk.Frame(self.result_card, bg=bg, height=80, bd=0)
+            card.pack(fill="x", pady=6)
+            card.pack_propagate(False)
 
-"""
-        self.results_text.insert(tk.END, basic_info)
-
-        # 各场景适用性分析
-        self.results_text.insert(tk.END, " 各场景适用性分析\n")
-        self.results_text.insert(tk.END, "-" * 40 + "\n")
-
-        for scene_name, analysis in results["scene_analysis"].items():
-            status = " 适用" if analysis["suitable"] else " 不适用"
-
-            scene_detail = f"""
-{scene_name}: {status}
-  最佳匹配比例: {analysis['best_match_ratio']}
-  变形程度: {analysis['distortion_level']}
-  差异度: {analysis['difference']*100:.2f}%
-"""
-            self.results_text.insert(tk.END, scene_detail)
-
-        # 使用建议
-        if results["best_scene"] == "其他":
-            suggestion = """
- 使用建议
-此图片在标准场景下使用可能会出现明显的拉伸或压缩变形。
-建议用于特殊用途或进行裁剪后再使用。
-"""
-        else:
-            suitable_count = len(results["suitable_scenes"])
-            if suitable_count == 1:
-                suggestion = f"""
- 使用建议
-此图片最适合用于{results['best_scene']}场景，显示效果最佳。
-"""
+            icon = {"手机": "📱", "PC": "💻", "平板": "📟", "头像": "👤"}.get(scene, "")
+            txt = f"{icon} {scene}"
+            if info["suitable"]:
+                txt += "  ·  适配"
             else:
-                other_scenes = [
-                    s for s in results["suitable_scenes"] if s != results["best_scene"]
-                ]
-                suggestion = f"""
- 使用建议
-此图片最适合用于{results['best_scene']}场景。
-也可用于: {', '.join(other_scenes)}
-"""
-
-        self.results_text.insert(tk.END, suggestion)
+                txt += "  ·  不适配"
+            tk.Label(
+                card,
+                text=txt,
+                font=("Segoe UI", 12, "bold"),
+                bg=bg,
+                fg=self.colors["text"],
+            ).pack(side="left", padx=15, pady=10)
 
     def run(self):
         """运行应用程序"""
