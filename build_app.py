@@ -12,7 +12,7 @@ def build_windows():
         "--windowed",  # 无控制台窗口
         "--name=图片场景分析器",  # 应用程序名称
         "--icon=app_icon.ico",  # 应用图标
-        "--add-data=README.md;.",  # 添加说明文件
+        "--add-data=README.md;.",  # 说明文件
         "--hidden-import=PIL._tkinter_finder",  # 隐式导入
         "image_scene_analyzer.py",  # 主程序文件
     ]
@@ -28,7 +28,6 @@ def build_windows():
 
 def build_mac():
     """构建Mac应用程序"""
-    # 使用PyInstaller创建.app文件
     cmd = [
         "pyinstaller",
         "--onefile",
